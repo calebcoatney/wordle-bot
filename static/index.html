@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wordle Solver</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #b4c2ff 0%, #adc5f1 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        input[type="number"],
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: normal;
+        }
+
+        button {
+            background: linear-gradient(135deg, #8b9adf 0%, #98b8c5 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .pattern-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .pattern-input select {
+            width: 20%;
+        }
+
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .suggestion-word {
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .info-box {
+            background: #d1ecf1;
+            border: 2px solid #bee5eb;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+
+        .success-box {
+            background: #d4edda;
+            border: 2px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+
+        .error-box {
+            background: #f8d7da;
+            border: 2px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+        }
+
+        .history-item {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .pattern-display {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+
+        .pattern-box {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            border-radius: 4px;
+            color: white;
+        }
+
+        .pattern-box.gray {
+            background: #787c7e;
+        }
+
+        .pattern-box.yellow {
+            background: #c9b458;
+        }
+
+        .pattern-box.green {
+            background: #6aaa64;
+        }
+
+        .session-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+
+        #init-section.active {
+            border-color: #667eea;
+            background: #f0f3ff;
+        }
+
+        #guess-section.active {
+            border-color: #667eea;
+            background: #f0f3ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Wordle Solver</h1>
+            <p>AI-powered entropy-based strategy</p>
+        </div>
+
+        <div class="content">
+            <!-- Step 1: Initialize Solver -->
+            <div id="init-section" class="section active">
+                <h2>Step 1: Initialize Solver</h2>
+                
+                <form id="init-form" onsubmit="return handleInitSubmit(event)">
+                    
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label for="n_top">Dictionary Size</label>
+                            <input type="number" id="n_top" name="n_top" value="100000" min="1000" max="500000">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="init_alpha">Alpha (Entropy Weight)</label>
+                            <input type="number" id="init_alpha" name="alpha" value="0.7" min="0" max="1" step="0.1">
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label for="init_topk">Number of Suggestions</label>
+                            <input type="number" id="init_topk" name="topk" value="5" min="1" max="20">
+                        </div>
+
+                        <div class="form-group">
+                            <label>&nbsp;</label>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="filter_past" name="filter_past_answers" checked>
+                                <label for="filter_past">Filter Past Answers</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="init_restrict" name="restrict_guesses" checked>
+                            <label for="init_restrict">Restrict to Remaining Candidates</label>
+                        </div>
+                    </div>
+
+                    <button type="submit">Initialize Solver</button>
+                </form>
+
+                <div id="init-response"></div>
+            </div>
+
+            <!-- Step 2: Make Guesses -->
+            <div id="guess-section" class="section hidden">
+                <h2>Step 2: Enter Guesses</h2>
+
+                <div id="guess-history"></div>
+
+                <form id="guess-form" onsubmit="return handleGuessSubmit(event)">
+                    
+                    <input type="hidden" id="session_id" name="session_id">
+
+                    <div class="form-group">
+                        <label for="word">Your Guess (5 letters)</label>
+                        <input type="text" id="word" name="word" maxlength="5" pattern="[a-zA-Z]{5}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Feedback Pattern (0=Gray, 1=Yellow, 2=Green)</label>
+                        <div class="pattern-input">
+                            <select name="pattern_0" required>
+                                <option value="0">⬜ Gray</option>
+                                <option value="1">🟨 Yellow</option>
+                                <option value="2">🟩 Green</option>
+                            </select>
+                            <select name="pattern_1" required>
+                                <option value="0">⬜ Gray</option>
+                                <option value="1">🟨 Yellow</option>
+                                <option value="2">🟩 Green</option>
+                            </select>
+                            <select name="pattern_2" required>
+                                <option value="0">⬜ Gray</option>
+                                <option value="1">🟨 Yellow</option>
+                                <option value="2">🟩 Green</option>
+                            </select>
+                            <select name="pattern_3" required>
+                                <option value="0">⬜ Gray</option>
+                                <option value="1">🟨 Yellow</option>
+                                <option value="2">🟩 Green</option>
+                            </select>
+                            <select name="pattern_4" required>
+                                <option value="0">⬜ Gray</option>
+                                <option value="1">🟨 Yellow</option>
+                                <option value="2">🟩 Green</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid-3">
+                        <div class="form-group">
+                            <label for="guess_alpha">Alpha</label>
+                            <input type="number" id="guess_alpha" name="alpha" value="0.7" min="0" max="1" step="0.1">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="guess_topk">Top K</label>
+                            <input type="number" id="guess_topk" name="topk" value="5" min="1" max="20">
+                        </div>
+
+                        <div class="form-group">
+                            <label>&nbsp;</label>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="guess_restrict" name="restrict_guesses">
+                                <label for="guess_restrict">Restrict</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="guess-button">Submit Guess</button>
+                </form>
+
+                <div id="guess-response"></div>
+
+                <button onclick="resetSolver()" style="background: #dc3545; margin-top: 15px;">
+                    Reset Solver
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let sessionId = null;
+        let guessCount = 0;
+        
+        // Use current host for API calls (works on local network)
+        const API_BASE = `${window.location.protocol}//${window.location.host}`;
+
+        // Handle init form submission
+        async function handleInitSubmit(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const payload = {
+                n_top: parseInt(formData.get('n_top')) || 100000,
+                filter_past_answers: formData.get('filter_past_answers') !== null,
+                alpha: parseFloat(formData.get('alpha')) || 0.7,
+                topk: parseInt(formData.get('topk')) || 5,
+                restrict_guesses: formData.get('restrict_guesses') !== null
+            };
+            
+            console.log('Sending init payload:', payload);
+            
+            try {
+                const response = await fetch(`${API_BASE}/init`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                console.log('Init response status:', response.status);
+                const data = await response.json();
+                console.log('Init response data:', data);
+                
+                if (!response.ok) {
+                    throw new Error(JSON.stringify(data.detail || data, null, 2));
+                }
+                
+                handleInitResponse(data);
+            } catch (error) {
+                document.getElementById('init-response').innerHTML = `
+                    <div class="error-box">
+                        <strong>Error:</strong><br>
+                        <pre style="margin-top: 10px; white-space: pre-wrap;">${error.message}</pre>
+                    </div>
+                `;
+            }
+            
+            return false;
+        }
+
+        // Handle guess form submission
+        async function handleGuessSubmit(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const payload = {
+                session_id: formData.get('session_id'),
+                word: formData.get('word').toLowerCase(),
+                pattern: [
+                    parseInt(formData.get('pattern_0')),
+                    parseInt(formData.get('pattern_1')),
+                    parseInt(formData.get('pattern_2')),
+                    parseInt(formData.get('pattern_3')),
+                    parseInt(formData.get('pattern_4'))
+                ],
+                alpha: parseFloat(formData.get('alpha')) || 0.7,
+                topk: parseInt(formData.get('topk')) || 5,
+                restrict_guesses: formData.get('restrict_guesses') !== null
+            };
+            
+            console.log('Sending guess payload:', payload);
+            
+            try {
+                const response = await fetch(`${API_BASE}/guess`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                console.log('Guess response status:', response.status);
+                const data = await response.json();
+                console.log('Guess response data:', data);
+                
+                if (!response.ok) {
+                    throw new Error(JSON.stringify(data.detail || data, null, 2));
+                }
+                
+                handleGuessResponse(data, formData);
+            } catch (error) {
+                document.getElementById('guess-response').innerHTML = `
+                    <div class="error-box">
+                        <strong>Error:</strong><br>
+                        <pre style="margin-top: 10px; white-space: pre-wrap;">${error.message}</pre>
+                    </div>
+                `;
+            }
+            
+            return false;
+        }
+
+        function handleInitResponse(data) {
+            if (!data.session_id) {
+                throw new Error('No session ID received');
+            }
+            
+            sessionId = data.session_id;
+            document.getElementById('session_id').value = sessionId;
+
+            const html = `
+                <div class="success-box">
+                    <strong>✓ Solver Initialized!</strong>
+                    <div class="session-info">
+                        <span>Session: ${sessionId.substring(0, 8)}...</span>
+                        <span>Candidates: ${data.total_candidates}</span>
+                    </div>
+                </div>
+                <div class="info-box">
+                    <strong>Initial Suggestions:</strong>
+                    <div class="suggestions">
+                        ${data.suggestions.map(w => `<span class="suggestion-word">${w}</span>`).join('')}
+                    </div>
+                </div>
+            `;
+            document.getElementById('init-response').innerHTML = html;
+
+            // Show guess section
+            document.getElementById('guess-section').classList.remove('hidden');
+            document.getElementById('guess-section').classList.add('active');
+            document.getElementById('init-section').classList.remove('active');
+            
+            guessCount = 0;
+            document.getElementById('guess-history').innerHTML = '';
+        }
+
+        function handleGuessResponse(data, formData) {
+            const word = formData.get('word').toLowerCase();
+            const pattern = [
+                parseInt(formData.get('pattern_0')),
+                parseInt(formData.get('pattern_1')),
+                parseInt(formData.get('pattern_2')),
+                parseInt(formData.get('pattern_3')),
+                parseInt(formData.get('pattern_4'))
+            ];
+
+            // Add to history
+            guessCount++;
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item';
+            historyItem.innerHTML = `
+                <strong>Guess ${guessCount}: ${word.toUpperCase()}</strong>
+                <div class="pattern-display">
+                    ${pattern.map((p, i) => {
+                        const color = p === 0 ? 'gray' : p === 1 ? 'yellow' : 'green';
+                        return `<div class="pattern-box ${color}">${word[i].toUpperCase()}</div>`;
+                    }).join('')}
+                </div>
+            `;
+            document.getElementById('guess-history').appendChild(historyItem);
+
+            // Show response
+            let html = '';
+            if (data.is_solved) {
+                html = `
+                    <div class="success-box">
+                        <strong>🎉 ${data.message}</strong>
+                        <p>Solved in ${guessCount} guess${guessCount > 1 ? 'es' : ''}!</p>
+                    </div>
+                `;
+                document.getElementById('guess-button').disabled = true;
+            } else if (data.candidates_remaining === 0) {
+                html = `
+                    <div class="error-box">
+                        <strong>❌ ${data.message}</strong>
+                    </div>
+                `;
+            } else {
+                html = `
+                    <div class="info-box">
+                        <strong>Candidates Remaining: ${data.candidates_remaining}</strong>
+                        <div class="suggestions">
+                            ${data.suggestions.map(w => `<span class="suggestion-word">${w}</span>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            document.getElementById('guess-response').innerHTML = html;
+
+            // Reset form
+            document.getElementById('guess-form').reset();
+            document.getElementById('guess_alpha').value = '0.7';
+            document.getElementById('guess_topk').value = '5';
+            document.getElementById('session_id').value = sessionId;
+            document.getElementById('word').focus();
+        }
+
+        function resetSolver() {
+            if (!sessionId) return;
+
+            fetch(`${API_BASE}/reset`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({session_id: sessionId})
+            })
+            .then(() => {
+                location.reload();
+            });
+        }
+
+        // Auto-uppercase word input
+        document.addEventListener('DOMContentLoaded', () => {
+            const wordInput = document.getElementById('word');
+            if (wordInput) {
+                wordInput.addEventListener('input', (e) => {
+                    e.target.value = e.target.value.toLowerCase();
+                });
+            }
+        });
+    </script>
+</body>
+</html>
